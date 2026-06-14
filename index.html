@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>P107 Campus Busy Screen｜校園營運忙碌螢幕</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="matrixRain" aria-hidden="true"></canvas>
+  <div class="scanline" aria-hidden="true"></div>
+  <div class="noise" aria-hidden="true"></div>
+
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">P107 Campus Busy Screen / 校園營運忙碌螢幕</div>
+        <h1>慈濟大學 經營管理學系 智慧商情研究室</h1>
+        <p class="subtitle">Campus Operation Intelligence · Business Signal Radar · Busy-Screen Simulation</p>
+      </div>
+      <div class="top-actions">
+        <button id="btnV1" class="view-btn active" type="button">V1 文字雨總控台</button>
+        <button id="btnV2" class="view-btn" type="button">V2 八區塊營運牆</button>
+        <div class="clock-card">
+          <span id="clockTime">--:--:--</span>
+          <small id="clockDate">----</small>
+        </div>
+      </div>
+    </header>
+
+    <section id="viewV1" class="view active" aria-label="V1 文字雨總控台">
+      <section class="hero-grid">
+        <article class="panel command-panel span-2">
+          <div class="panel-title"><span class="dot live"></span>AI DATA ROBOT / ACTIVE STREAM</div>
+          <div id="terminalLog" class="terminal-log"></div>
+        </article>
+
+        <article class="panel map-panel">
+          <div class="panel-title"><span class="dot map"></span>CAMPUS OPERATION MAP</div>
+          <div class="mini-map" id="miniMap">
+            <div class="route route-a"></div>
+            <div class="route route-b"></div>
+            <div class="building b1">LIB</div>
+            <div class="building b2">MGT</div>
+            <div class="building b3">CAF</div>
+            <div class="building b4">LAB</div>
+            <div class="moving-point p1"></div>
+            <div class="moving-point p2"></div>
+            <div class="moving-point p3"></div>
+            <div class="moving-point p4"></div>
+          </div>
+          <div class="map-status">
+            <span>清潔狀態：<b id="cleanStatus">SYNC</b></span>
+            <span>人流壓力：<b id="flowStatus">MEDIUM</b></span>
+          </div>
+        </article>
+      </section>
+
+      <section class="metric-grid" id="v1Metrics"></section>
+
+      <section class="bottom-grid">
+        <article class="panel chart-panel">
+          <div class="panel-title"><span class="dot chart"></span>AIR QUALITY / SENSOR FEED</div>
+          <canvas id="airChart" width="600" height="220"></canvas>
+        </article>
+        <article class="panel chart-panel">
+          <div class="panel-title"><span class="dot chart"></span>NETWORK / API LOAD</div>
+          <canvas id="netChart" width="600" height="220"></canvas>
+        </article>
+      </section>
+    </section>
+
+    <section id="viewV2" class="view" aria-label="V2 八區塊營運牆">
+      <section class="v2-intro panel">
+        <div>
+          <div class="panel-title"><span class="dot live"></span>V2 / EIGHT-DOMAIN CAMPUS INTELLIGENCE WALL</div>
+          <h2>八區塊校園營運智慧牆</h2>
+          <p>此介面將即時資料流、校園營運、環境監測、學習分析與決策支援整合為 8 個可展示區塊。所有數值為前端模擬資料，可用於展示、導覽與課堂討論。</p>
+        </div>
+        <div class="v2-summary">
+          <span>Live pulse <b id="v2Pulse">--</b></span>
+          <span>Decision index <b id="v2Decision">--</b></span>
+          <span>Signal scan <b id="v2Signal">--</b></span>
+        </div>
+      </section>
+
+      <section class="v2-grid">
+        <article class="panel domain-card" data-domain="pulse">
+          <div class="domain-no">01</div>
+          <h3>Campus Live Pulse<br><span>校園即時脈動</span></h3>
+          <div class="domain-values">
+            <p>人流估計 <b id="d1People">--</b></p>
+            <p>Wi‑Fi 裝置 <b id="d1Wifi">--</b></p>
+            <p>噪音分貝 <b id="d1Noise">--</b></p>
+          </div>
+          <div class="spark" id="spark1"></div>
+        </article>
+
+        <article class="panel domain-card" data-domain="map">
+          <div class="domain-no">02</div>
+          <h3>Operation Map<br><span>校園營運地圖</span></h3>
+          <div class="domain-values">
+            <p>清潔任務 <b id="d2Clean">--</b></p>
+            <p>教室使用率 <b id="d2Room">--</b></p>
+            <p>停車剩餘 <b id="d2Park">--</b></p>
+          </div>
+          <div class="tiny-campus">
+            <i style="--x:15%;--y:32%"></i><i style="--x:44%;--y:62%"></i><i style="--x:72%;--y:39%"></i>
+          </div>
+        </article>
+
+        <article class="panel domain-card" data-domain="business">
+          <div class="domain-no">03</div>
+          <h3>Business Intelligence Stream<br><span>商情訊號流</span></h3>
+          <div id="d3Signals" class="signal-list"></div>
+        </article>
+
+        <article class="panel domain-card" data-domain="facility">
+          <div class="domain-no">04</div>
+          <h3>Facility Management<br><span>設施管理</span></h3>
+          <div class="bar-list">
+            <label>空調負載 <span id="d4AirVal">--</span></label><div><b id="d4AirBar"></b></div>
+            <label>照明效率 <span id="d4LightVal">--</span></label><div><b id="d4LightBar"></b></div>
+            <label>維修處理 <span id="d4FixVal">--</span></label><div><b id="d4FixBar"></b></div>
+          </div>
+        </article>
+
+        <article class="panel domain-card" data-domain="learning">
+          <div class="domain-no">05</div>
+          <h3>Learning Analytics<br><span>學習分析</span></h3>
+          <div class="domain-values">
+            <p>LMS 登入 <b id="d5Lms">--</b></p>
+            <p>作業繳交率 <b id="d5Submit">--</b></p>
+            <p>教材點閱 <b id="d5Views">--</b></p>
+          </div>
+          <div class="learning-orbit"><span></span><span></span><span></span></div>
+        </article>
+
+        <article class="panel domain-card" data-domain="system">
+          <div class="domain-no">06</div>
+          <h3>System Monitor<br><span>系統監控</span></h3>
+          <div class="domain-values mono">
+            <p>API req/s <b id="d6Api">--</b></p>
+            <p>DB query/s <b id="d6Db">--</b></p>
+            <p>CPU load <b id="d6Cpu">--</b></p>
+          </div>
+          <div class="server-stack"><em></em><em></em><em></em></div>
+        </article>
+
+        <article class="panel domain-card" data-domain="environment">
+          <div class="domain-no">07</div>
+          <h3>Environmental Intelligence<br><span>環境智慧監測</span></h3>
+          <div class="domain-values">
+            <p>CO₂ <b id="d7Co2">--</b></p>
+            <p>PM2.5 <b id="d7Pm">--</b></p>
+            <p>溫濕度 <b id="d7Temp">--</b></p>
+          </div>
+          <canvas id="envChart" width="360" height="120"></canvas>
+        </article>
+
+        <article class="panel domain-card decision-card" data-domain="decision">
+          <div class="domain-no">08</div>
+          <h3>Decision Support Index<br><span>決策支援指標</span></h3>
+          <div class="decision-ring">
+            <span id="d8Index">--</span>
+          </div>
+          <div class="domain-values">
+            <p>空間效率 <b id="d8Space">--</b></p>
+            <p>服務負載 <b id="d8Service">--</b></p>
+            <p>能源效率 <b id="d8Energy">--</b></p>
+          </div>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
