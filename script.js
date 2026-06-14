@@ -6,12 +6,28 @@ const drift = (value, min, max, step = 1, d = 0) => {
   const next = clamp(value + rand(-step, step, d + 1), min, max);
   return Number(next.toFixed(d));
 };
+const motion = {};
+const smoothDrift = (key, value, min, max, step = 1, d = 0, target = (min + max) / 2) => {
+  const previousVelocity = motion[key] || 0;
+  const pull = (target - value) * .015;
+  const velocity = clamp(previousVelocity * .72 + rand(-step, step, d + 2) * .28 + pull, -step, step);
+  const next = clamp(value + velocity, min, max);
+  motion[key] = next === min || next === max ? velocity * -.35 : velocity;
+  return Number(next.toFixed(d));
+};
+const makeSeries = (length, start, min, max, step, d) => {
+  const values = [start];
+  while (values.length < length) {
+    values.push(drift(values.at(-1), min, max, step, d));
+  }
+  return values;
+};
 
 const state = {
   view: 'V1',
-  air: Array.from({ length: 48 }, () => rand(22, 29, 1)),
-  net: Array.from({ length: 48 }, () => rand(320, 520, 0)),
-  env: Array.from({ length: 32 }, () => rand(520, 680, 0)),
+  air: makeSeries(48, 25.4, 22, 29, .25, 1),
+  net: makeSeries(48, 420, 320, 520, 12, 0),
+  env: makeSeries(32, 610, 520, 680, 6, 0),
   v1Values: [650, 48.5, 1280, 335.0, 62, 71.2],
   v2: {
     people: 3059, wifi: 1426, noise: 45.8, clean: 86, room: 73, park: 42,
@@ -81,15 +97,17 @@ renderMetricCards();
 function updateV1() {
   const v1Steps = [4, .7, 9, 2.8, 5, 1.2];
   v1MetricDefs.forEach((m, i) => {
-    state.v1Values[i] = drift(state.v1Values[i], m[2], m[3], v1Steps[i], m[4]);
+    const previous = state.v1Values[i];
+    state.v1Values[i] = smoothDrift(`v1-${i}`, previous, m[2], m[3], v1Steps[i], m[4]);
     const value = state.v1Values[i];
     $(`m${i}`).innerHTML = `${Number(value).toLocaleString()}<span class="metric-unit">${m[1]}</span>`;
-    const trend = rand(-1.8, 2.2, 1);
-    $(`t${i}`).textContent = `${trend >= 0 ? '△' : '▽'} ${Math.abs(trend)}% / live window`;
+    const trend = Number(((value - previous) / previous * 100).toFixed(1));
+    $(`t${i}`).textContent = `${trend >= 0 ? '△' : '▽'} ${Math.abs(trend).toFixed(1)}% / live window`;
     $(`t${i}`).style.color = trend >= 0 ? 'var(--green)' : 'var(--red)';
   });
   $('cleanStatus').textContent = pick(['SYNC', 'NORMAL', 'ROUTE-A', 'CHECKING', 'OPTIMAL']);
-  $('flowStatus').textContent = pick(['LOW', 'MEDIUM', 'HIGH', 'SHIFTING', 'PEAK']);
+  const flow = state.v1Values[5];
+  $('flowStatus').textContent = flow < 55 ? 'LOW' : flow < 72 ? 'MEDIUM' : flow < 84 ? 'HIGH' : 'PEAK';
 }
 
 const terminalPhrases = [
@@ -127,9 +145,9 @@ function drawLineChart(canvasId, data, min, max, accent = 'rgba(68,255,153,.95)'
   g.strokeStyle = accent; g.lineWidth = 2; g.shadowColor = accent; g.shadowBlur = 12; g.stroke(); g.shadowBlur = 0;
 }
 function updateCharts() {
-  state.air.push(drift(state.air.at(-1), 20, 32, .4, 1)); state.air.shift();
-  state.net.push(drift(state.net.at(-1), 160, 780, 28, 0)); state.net.shift();
-  state.env.push(drift(state.env.at(-1), 430, 820, 12, 0)); state.env.shift();
+  state.air.push(smoothDrift('chart-air', state.air.at(-1), 20, 32, .3, 1)); state.air.shift();
+  state.net.push(smoothDrift('chart-net', state.net.at(-1), 160, 780, 18, 0)); state.net.shift();
+  state.env.push(smoothDrift('chart-env', state.env.at(-1), 430, 820, 8, 0)); state.env.shift();
   drawLineChart('airChart', state.air, 5, 42, 'rgba(68,255,153,.95)');
   drawLineChart('netChart', state.net, 80, 820, 'rgba(62,246,255,.95)');
   drawLineChart('envChart', state.env, 360, 840, 'rgba(255,211,106,.95)');
@@ -156,30 +174,30 @@ function initSignalTicker() {
 
 function updateV2() {
   const v = state.v2;
-  v.people = drift(v.people, 1780, 3250, 7, 0);
-  v.wifi = drift(v.wifi, 960, 1880, 10, 0);
-  v.noise = drift(v.noise, 38, 66, .8, 1);
-  v.clean = drift(v.clean, 72, 98, 1, 0);
-  v.room = drift(v.room, 48, 91, 1, 0);
-  v.park = drift(v.park, 8, 73, 2, 0);
-  v.airLoad = drift(v.airLoad, 48, 88, 1, 0);
-  v.light = drift(v.light, 62, 96, 1, 0);
-  v.fix = drift(v.fix, 58, 99, 1, 0);
-  v.lms = drift(v.lms, 240, 980, 8, 0);
-  v.submit = drift(v.submit, 54, 96, 1, 0);
-  v.views = drift(v.views, 1100, 7800, 38, 0);
-  v.api = drift(v.api, 20, 130, 6, 0);
-  v.db = drift(v.db, 45, 360, 12, 0);
-  v.cpu = drift(v.cpu, 18, 84, 3, 0);
-  v.co2 = drift(v.co2, 480, 880, 7, 0);
-  v.pm = drift(v.pm, 4, 25, .6, 1);
-  v.temp = drift(v.temp, 22, 29, .2, 1);
-  v.hum = drift(v.hum, 52, 76, 1, 0);
-  v.index = drift(v.index, 72, 96, 1, 0);
-  v.space = drift(v.space, 68, 94, 1, 0);
-  v.service = drift(v.service, 38, 77, 1, 0);
-  v.energy = drift(v.energy, 63, 91, 1, 0);
-  v.pulse = drift(v.pulse, 70, 98, 1, 0);
+  v.people = smoothDrift('v2-people', v.people, 1780, 3250, 5, 0);
+  v.wifi = smoothDrift('v2-wifi', v.wifi, 960, 1880, 7, 0, v.people * .47);
+  v.noise = smoothDrift('v2-noise', v.noise, 38, 66, .5, 1);
+  v.clean = smoothDrift('v2-clean', v.clean, 72, 98, .7, 0);
+  v.room = smoothDrift('v2-room', v.room, 48, 91, .7, 0);
+  if (Math.random() < .22) v.park = clamp(v.park + pick([-1, 1]), 8, 73);
+  v.airLoad = smoothDrift('v2-air-load', v.airLoad, 48, 88, .7, 0);
+  v.light = smoothDrift('v2-light', v.light, 62, 96, .7, 0);
+  v.fix = smoothDrift('v2-fix', v.fix, 58, 99, .7, 0);
+  v.lms = smoothDrift('v2-lms', v.lms, 240, 980, 6, 0);
+  v.submit = smoothDrift('v2-submit', v.submit, 54, 96, .7, 0);
+  v.views = smoothDrift('v2-views', v.views, 1100, 7800, 24, 0);
+  v.api = smoothDrift('v2-api', v.api, 20, 130, 4, 0);
+  v.db = smoothDrift('v2-db', v.db, 45, 360, 8, 0);
+  v.cpu = smoothDrift('v2-cpu', v.cpu, 18, 84, 2, 0);
+  v.co2 = smoothDrift('v2-co2', v.co2, 480, 880, 4, 0, 540 + (v.people - 1780) * .12);
+  v.pm = smoothDrift('v2-pm', v.pm, 4, 25, .35, 1);
+  v.temp = smoothDrift('v2-temp', v.temp, 22, 29, .1, 1);
+  v.hum = smoothDrift('v2-hum', v.hum, 52, 76, .6, 0);
+  v.index = smoothDrift('v2-index', v.index, 72, 96, .7, 0);
+  v.space = smoothDrift('v2-space', v.space, 68, 94, .7, 0);
+  v.service = smoothDrift('v2-service', v.service, 38, 77, .7, 0);
+  v.energy = smoothDrift('v2-energy', v.energy, 63, 91, .7, 0);
+  v.pulse = smoothDrift('v2-pulse', v.pulse, 70, 98, .7, 0);
 
   $('d1People').textContent = v.people.toLocaleString();
   $('d1Wifi').textContent = v.wifi.toLocaleString();
